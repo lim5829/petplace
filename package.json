@@ -1,0 +1,5 @@
+{
+  "name": "petplace-proxy",
+  "version": "1.0.0",
+  "description": "PetPlace 식약처 API CORS 프록시"
+}
