@@ -294,30 +294,55 @@ function fetchKakao() {
   setBanner('', '🔄 식약처 데이터 불러오는 중...');
   renderLoading();
 
+  // 방법1: Vercel 프록시
   var url = PROXY + '?start=1&end=500&petYn=Y';
-
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
-  xhr.timeout = 15000;
+  xhr.timeout = 12000;
   xhr.onload = function() {
     try {
       var json = JSON.parse(xhr.responseText);
       var rows = json && json.COOKRST && json.COOKRST.row;
       if (!Array.isArray(rows) || rows.length === 0) throw new Error('데이터 없음');
-      allData = rows.map(parseMFDS);
-      allData.forEach(function(p) {
-        p.dist = (userLat && p.lat && p.lng) ? haversine(userLat, userLng, p.lat, p.lng) : 99;
-      });
-      allData.sort(function(a,b){ return a.dist - b.dist; });
-      setBanner('live', '✅ 식약처 실시간 · ' + allData.length + '개 업소');
-      renderFiltered();
+      onMFDSData(rows);
+    } catch(e) {
+      fetchDirect(); // 프록시 실패 시 직접 호출 시도
+    }
+  };
+  xhr.onerror   = function() { fetchDirect(); };
+  xhr.ontimeout = function() { fetchDirect(); };
+  xhr.send();
+}
+
+// 방법2: 식약처 직접 호출 (WebView에서 CORS 없을 때)
+function fetchDirect() {
+  var API_KEY = 'f479233845eb42f88e0d';
+  var url = 'https://www.foodsafetykorea.go.kr/api/' + API_KEY + '/COOKRST/json/1/500?petYn=Y';
+  var xhr2 = new XMLHttpRequest();
+  xhr2.open('GET', url, true);
+  xhr2.timeout = 12000;
+  xhr2.onload = function() {
+    try {
+      var json = JSON.parse(xhr2.responseText);
+      var rows = json && json.COOKRST && json.COOKRST.row;
+      if (!Array.isArray(rows) || rows.length === 0) throw new Error('데이터 없음');
+      onMFDSData(rows);
     } catch(e) {
       loadSample();
     }
   };
-  xhr.onerror   = function() { loadSample(); };
-  xhr.ontimeout = function() { loadSample(); };
-  xhr.send();
+  xhr2.onerror   = function() { loadSample(); };
+  xhr2.ontimeout = function() { loadSample(); };
+  xhr2.send();
+}
+
+function onMFDSData(rows) {
+  allData = rows.map(parseMFDS);
+  allData.forEach(function(p) {
+    p.dist = (userLat && p.lat && p.lng) ? haversine(userLat, userLng, p.lat, p.lng) : 99;
+  });
+  setBanner('live', '✅ 식약처 실시간 · ' + allData.length + '개 업소');
+  renderFiltered();
 }
 
 function loadSample() {
